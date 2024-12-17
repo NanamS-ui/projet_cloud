@@ -9,16 +9,23 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use App\Repository\GenderRepository;
+use App\Repository\RoleRepository;
 
 class UsersController extends AbstractController
 {
     private EntityManagerInterface $entityManager;
     private UsersRepository $usersRepository;
+    private RoleRepository $roleRepository;
+    private GenderRepository $genderRepository;
 
-    public function __construct(EntityManagerInterface $entityManager, UsersRepository $usersRepository)
+    public function __construct(EntityManagerInterface $entityManager, UsersRepository $usersRepository, RoleRepository $roleRepository, GenderRepository $genderRepository)
     {
         $this->entityManager = $entityManager;
         $this->usersRepository = $usersRepository;
+        $this->roleRepository = $roleRepository;
+        $this->genderRepository = $genderRepository;
     }
 
     // 1. GET - Liste de tous les utilisateurs
@@ -65,24 +72,32 @@ class UsersController extends AbstractController
     }
 
     // 3. POST - Créer un nouvel utilisateur
-    #[Route('/api/users', name: 'create_users', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
+    #[Route('/api/user', name: 'create_users', methods: ['POST'])]
+    public function create(Request $request, SessionInterface $session): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $userData = $session->get('user');
 
-        if (!isset($data['username'], $data['email'], $data['password'], $data['birthDate'])) {
-            return $this->json(['message' => 'Missing required fields'], 400);
+        if (!$userData) {
+            return $this->json(['message' => 'No user data in session'], 400);
         }
 
         $user = new Users();
-        $user->setUsername($data['username']);
-        $user->setEmail($data['email']);
-        $user->setPassword($data['password']); // À hasher dans un vrai projet !
-        $user->setBirthDate(new \DateTime($data['birthDate']));
+        $user->setUsername($userData['username']);
+        $user->setEmail($userData['email']);
 
-        // Assigner Role et Gender (exemple statique pour démonstration)
-        $role = $this->entityManager->getRepository('App\Entity\Role')->find($data['roleId'] ?? 1);
-        $gender = $this->entityManager->getRepository('App\Entity\Gender')->find($data['genderId'] ?? 1);
+        $hashedPassword = md5($userData['password']);
+        $user->setPassword($hashedPassword);
+
+        $user->setBirthDate(new \DateTime($userData['birthDate']));
+
+        $roleId = $userData['role'] ?? 1;
+        $role = $this->roleRepository->find($roleId);
+
+        if (!$role) {
+            $role = $this->roleRepository->find(1);
+        }
+
+        $gender = $this->genderRepository->find($userData['gender']);
 
         $user->setRole($role);
         $user->setGender($gender);
@@ -90,7 +105,16 @@ class UsersController extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        return $this->json(['message' => 'User created successfully'], 201);
+        $session->remove('user');
+
+        return $this->json([
+            'message' => 'User created successfully from session',
+            'user' => [
+                'username' => $user->getUsername(),
+                'email' => $user->getEmail(),
+                'birthDate' => $user->getBirthDate()->format('Y-m-d')
+            ]
+        ], 201);
     }
 
     // 4. PUT - Modifier un utilisateur existant
@@ -112,7 +136,7 @@ class UsersController extends AbstractController
             $user->setEmail($data['email']);
         }
         if (isset($data['password'])) {
-            $user->setPassword($data['password']); // À hasher dans un vrai projet !
+            $user->setPassword($data['password']);
         }
         if (isset($data['birthDate'])) {
             $user->setBirthDate(new \DateTime($data['birthDate']));
