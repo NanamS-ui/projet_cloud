@@ -28,14 +28,20 @@ class UsersRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['email' => $email]);
     }
-    public function login(String $email,String $mdp): ?Users {
+    public function login(string $email, string $mdp): ?Users
+    {
         $user = $this->findByEmail($email);
-        if($user == null) {return null;}
-        else{
-            $mdpUser = $user->getPassword();
-            if(sha1($mdp) != $mdpUser) {return null;}
-            else {return $user;}
+
+        if ($user === null) {
+            return null;
         }
-        
+
+        $mdpUser = $user->getPassword();
+
+        if (md5($mdp) !== $mdpUser) {
+            return null;
+        }
+
+        return $user;
     }
 }

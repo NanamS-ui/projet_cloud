@@ -20,7 +20,7 @@ class GenderController extends AbstractController
         $this->entityManager = $entityManager;
     }
 
-    #[Route('/api/genders', name: 'index_gender', methods: ['GET'])]
+    #[Route('/api/gender', name: 'index_gender', methods: ['GET'])]
     public function index(GenderRepository $genderRepository): JsonResponse
     {
         $genders = $genderRepository->findAll();

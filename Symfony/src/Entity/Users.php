@@ -68,7 +68,7 @@ class Users
 
     public function setPassword(string $password): self
     {
-        $this->password = sha1($password);
+        $this->password = $password;
 
         return $this;
     }
