@@ -12,6 +12,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use App\Repository\GenderRepository;
 use App\Repository\RoleRepository;
+use OpenApi\Attributes as OA;
 
 class UsersController extends AbstractController
 {
@@ -51,6 +52,52 @@ class UsersController extends AbstractController
 
     // 2. GET - Détail d'un utilisateur par ID
     #[Route('/api/user/{id}', name: 'show_users', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Récupérer les détails d'un utilisateur",
+        description: "Permet de récupérer les informations d'un utilisateur spécifique par son ID.",
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "integer"),
+                description: "L'identifiant unique de l'utilisateur"
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Détails de l'utilisateur",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "id", type: "integer"),
+                            new OA\Property(property: "username", type: "string"),
+                            new OA\Property(property: "email", type: "string"),
+                            new OA\Property(property: "birthDate", type: "string", format: "date"),
+                            new OA\Property(property: "role", type: "string"),
+                            new OA\Property(property: "gender", type: "string"),
+                        ]
+                    )
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: "Utilisateur non trouvé",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "message", type: "string", example: "User not found")
+                        ]
+                    )
+                )
+            )
+        ]
+    )]
     public function show(int $id): JsonResponse
     {
         $user = $this->usersRepository->find($id);
@@ -73,6 +120,47 @@ class UsersController extends AbstractController
 
     // 3. POST - Créer un nouvel utilisateur
     #[Route('/api/user', name: 'create_users', methods: ['POST'])]
+    #[OA\Post(
+        summary: "Créer un utilisateur",
+        description: "Cette route permet de créer un nouvel utilisateur en utilisant les données stockées en session.",
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: "Utilisateur créé avec succès",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "message", type: "string", example: "User created successfully from session"),
+                            new OA\Property(
+                                property: "user",
+                                type: "object",
+                                properties: [
+                                    new OA\Property(property: "username", type: "string"),
+                                    new OA\Property(property: "email", type: "string"),
+                                    new OA\Property(property: "birthDate", type: "string", format: "date"),
+                                ]
+                            ),
+                        ]
+                    )
+                )
+            ),
+            new OA\Response(
+                response: 400,
+                description: "Données utilisateur absentes dans la session",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "message", type: "string", example: "No user data in session")
+                        ]
+                    )
+                )
+            )
+        ]
+    )]
     public function create(Request $request, SessionInterface $session): JsonResponse
     {
         $userData = $session->get('user');
@@ -119,6 +207,47 @@ class UsersController extends AbstractController
 
     // 4. PUT - Modifier un utilisateur existant
     #[Route('/api/user/{id}', name: 'update_users', methods: ['PUT'])]
+    #[OA\Put(
+        summary: "Mettre à jour un utilisateur",
+        description: "Permet de mettre à jour un utilisateur existant en fonction des données fournies.",
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "integer"),
+                description: "L'identifiant unique de l'utilisateur à modifier"
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Utilisateur mis à jour avec succès",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "message", type: "string", example: "User updated successfully")
+                        ]
+                    )
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: "Utilisateur non trouvé",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "message", type: "string", example: "User not found")
+                        ]
+                    )
+                )
+            )
+        ]
+    )]
     public function update(int $id, Request $request): JsonResponse
     {
         $user = $this->usersRepository->find($id);
@@ -149,6 +278,47 @@ class UsersController extends AbstractController
 
     // 5. DELETE - Supprimer un utilisateur
     #[Route('/api/user/{id}', name: 'delete_users', methods: ['DELETE'])]
+    #[OA\Delete(
+        summary: "Supprimer un utilisateur",
+        description: "Permet de supprimer un utilisateur spécifique par son ID.",
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "integer"),
+                description: "L'identifiant unique de l'utilisateur à supprimer"
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Utilisateur supprimé avec succès",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "message", type: "string", example: "User deleted successfully")
+                        ]
+                    )
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: "Utilisateur non trouvé",
+                content: new OA\MediaType(
+                    mediaType: "application/json",
+                    schema: new OA\Schema(
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "message", type: "string", example: "User not found")
+                        ]
+                    )
+                )
+            )
+        ]
+    )]
     public function delete(int $id): JsonResponse
     {
         $user = $this->usersRepository->find($id);
