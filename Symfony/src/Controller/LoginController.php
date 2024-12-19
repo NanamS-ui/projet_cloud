@@ -12,9 +12,13 @@ use DateTime;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Mailer\MailerInterface;
+use App\Repository\LimiteTentativeConnectionRepository;
+use App\Repository\DureeSessionRepository;
+use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -23,6 +27,7 @@ class LoginController extends AbstractController
     private UsersRepository $usersRepository;
     private EntityManagerInterface $entityManager;
     private GeneratePinRepository $generatePinRepository;
+    private DureeSessionRepository $dureeSessionRepository;
 
     public function __construct(EntityManagerInterface $entityManager, UsersRepository $usersRepository, GeneratePinRepository $generatePinRepository,)
     {
@@ -32,7 +37,7 @@ class LoginController extends AbstractController
     }
 
     #[Route('/api/login', name: 'login_user', methods: ['POST'])]
-    public function login(Request $request, SessionInterface $session, MailerInterface $mailer): JsonResponse
+    public function login(Request $request, SessionInterface $session, MailerInterface $mailer, LimiteTentativeConnectionRepository $limiteTentativeConnectionRepository): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
@@ -51,7 +56,10 @@ class LoginController extends AbstractController
         $attemptsKey = 'login_attempts_' . $email;
         $attempts = $session->get($attemptsKey, 0);
 
-        if ($attempts >= 3) {
+        $limit = $limiteTentativeConnectionRepository->findAll()[0];
+        $limitAttemps = $limit->getLimite();
+
+        if ($attempts >= $limitAttemps) {
             $htmlFilePath = $this->getParameter('kernel.project_dir') . '/public/reinitialiser.html';
 
             if (!file_exists($htmlFilePath)) {
@@ -97,6 +105,7 @@ class LoginController extends AbstractController
         $pin = Util::generatePin();
         $generatePin->setPin(md5($pin));
         $now = new DateTime();
+        $this->generatePinRepository->deleteExpiredPins($now);
         $generatePin->setDateDebut($now);
         $dateFin = clone $now;
         $dateFin->modify('+90 seconds');
@@ -185,8 +194,12 @@ class LoginController extends AbstractController
     }
 
     #[Route('/api/verifyPin', name: 'verify_Pin', methods: ['POST'])]
-    public function verifyPin(Request $request, SessionInterface $session, MailerInterface $mailer): JsonResponse
+    public function verifyPin(Request $request, SessionInterface $session, MailerInterface $mailer, DureeSessionRepository $dureeSessionRepository, LimiteTentativeConnectionRepository $limiteTentativeConnectionRepository): JsonResponse
     {
+        $duree = $dureeSessionRepository->findAll()[0];
+        ini_set('session.gc_maxlifetime', $duree->getDuree());
+        session_set_cookie_params($duree->getDuree());
+
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['email'], $data['pin'])) {
@@ -203,7 +216,10 @@ class LoginController extends AbstractController
         $attemptsKey = 'pin_attempts_' . $email;
         $attemps = $session->get($attemptsKey, 0);
 
-        if ($attemps >= 3) {
+        $limit = $limiteTentativeConnectionRepository->findAll()[0];
+        $limitAttemps = $limit->getLimite();
+
+        if ($attemps >= $limitAttemps) {
             $htmlFilePath = $this->getParameter('kernel.project_dir') . '/public/reinitialiserPIN.html';
 
             if (!file_exists($htmlFilePath)) {
@@ -228,13 +244,16 @@ class LoginController extends AbstractController
         }
 
         $now = new DateTime();
-
+        $this->generatePinRepository->deleteExpiredPins($now);
         $generatePin = $this->generatePinRepository->findByUserIdAndDateRangeAndPin($user->getUserId(), $now, md5($data['pin']));
 
         if ($generatePin == null) {
             $session->set($attemptsKey, $attemps + 1);
             $session->set('email', $email);
-            return $this->json(['message' => 'Invalidate pin'], 400);
+            return $this->json([
+                'message' => 'Invalidate pin',
+                'attempts' => $attemps + 1
+            ], 400);
         }
 
         $session->remove($attemptsKey);
@@ -242,6 +261,8 @@ class LoginController extends AbstractController
 
         $user->setToken(Util::generateToken());
         $this->entityManager->flush();
+
+        $session->set('user', $user->getUserId());
 
         $responseData = [
             'messageSuccess' => 'Connexion successful, token created successfully',
