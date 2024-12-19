@@ -32,6 +32,16 @@ class GeneratePinRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    public function deleteExpiredPins(DateTime $date): int
+    {
+        $queryBuilder = $this->createQueryBuilder('g')
+            ->delete()
+            ->andWhere('g.dateFin < :date')
+            ->setParameter('date', $date);
+
+        return $queryBuilder->getQuery()->execute();
+    }
+
     //    /**
     //     * @return GeneratePin[] Returns an array of GeneratePin objects
     //     */
@@ -56,4 +66,6 @@ class GeneratePinRepository extends ServiceEntityRepository
     //            ->getOneOrNullResult()
     //        ;
     //    }
+
+
 }

@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: symfony_projet_cloud_S5
+    container_name: symfony_projet_cloud
     working_dir: /app
     volumes:
       - .:/app
@@ -18,10 +18,10 @@ services:
 
   db:
     image: postgres:15
-    container_name: symfony_db_projet_cloud_S5
+    container_name: symfony_db_test
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: toky
       POSTGRES_DB: cloud
     ports:
       - "5432:5432"
