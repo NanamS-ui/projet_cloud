@@ -28,7 +28,7 @@ class SendMailController extends AbstractController
         $this->genderRepository = $genderRepository;
     }
 
-    #[Route('/inscription_mail', name: 'send_email', methods: ['POST'])]
+    #[Route('/api/inscription_mail', name: 'send_email', methods: ['POST'])]
     #[OA\Post(
         summary: "Envoyer un email d'inscription",
         description: "Cette route permet de créer un utilisateur et d'envoyer un email de bienvenue.",
