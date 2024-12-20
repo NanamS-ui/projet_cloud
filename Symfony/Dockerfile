@@ -24,6 +24,7 @@ RUN find . -type f -exec dos2unix {} \;
 
 # Lancer les commandes de migration automatiquement
 RUN php bin/console doctrine:database:create --if-not-exists || true
+RUN php bin/console make:migration
 RUN php bin/console doctrine:migrations:migrate --no-interaction || true
 
 # Commande par défaut (optionnelle)
