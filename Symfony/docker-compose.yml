@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: symfony_projet_cloud
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      MAILER_DSN: 'smtp://projetclouds5p16@gmail.com:conseggrsqadumen@smtp.gmail.com:587?encryption=tls&auth_mode=login&verify_peer=false'
+    depends_on:
+      - db
+      - mailhog
+    command: >
+      sh -c "
+      php composer.phar install --no-scripts --no-interaction &&
+      php bin/console make:migration || true &&
+      php bin/console doctrine:migrations:migrate --no-interaction || true &&
+      php -S 0.0.0.0:8000 -t public
+      "
+  db:
+    image: postgres:15
+    container_name: symfony_db_test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: toky
+      POSTGRES_DB: cloud
+    ports:
+      - "5432:5432"
+  mailhog:
+    image: mailhog/mailhog
+    container_name: symfony_mailhog
+    ports:
+      - "1025:1025" 
+      - "8025:8025"
